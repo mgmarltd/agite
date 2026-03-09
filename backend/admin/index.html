@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    /* Login Page */
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .login-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-box h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 24px;
+      font-weight: 300;
+      letter-spacing: 2px;
+    }
+
+    /* Dashboard */
+    .dashboard { display: none; }
+    .dashboard.active { display: block; }
+    .login-container.hidden { display: none; }
+
+    .topbar {
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar h1 {
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 2px;
+    }
+    .topbar button {
+      background: transparent;
+      border: 1px solid #555;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .topbar button:hover { border-color: #fff; }
+
+    .content {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 24px;
+    }
+    .card h2 {
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #aaa;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px 16px;
+      background: #0f0f0f;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #666;
+    }
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .btn {
+      background: #fff;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      width: 100%;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-outline {
+      background: transparent;
+      color: #fff;
+      border: 1px solid #555;
+    }
+    .btn-outline:hover { border-color: #fff; }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .alert-success { background: #0a3d0a; border: 1px solid #1a6b1a; }
+    .alert-error { background: #3d0a0a; border: 1px solid #6b1a1a; }
+
+    .deadline-preview {
+      text-align: center;
+      padding: 20px;
+      background: #000;
+      border-radius: 8px;
+      margin-top: 16px;
+    }
+    .deadline-preview .countdown {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      font-family: 'Georgia', serif;
+    }
+    .deadline-preview .labels {
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: #888;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login -->
+  <div class="login-container" id="loginPage">
+    <div class="login-box">
+      <h1>ADMIN LOGIN</h1>
+      <div id="loginAlert"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUsername" placeholder="admin" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+      </div>
+      <button class="btn" onclick="login()">LOGIN</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard" id="dashboard">
+    <div class="topbar">
+      <h1>AGITE ADMIN</h1>
+      <button onclick="logout()">LOGOUT</button>
+    </div>
+
+    <div class="content">
+      <div id="dashboardAlert"></div>
+
+      <!-- Deadline Settings -->
+      <div class="card">
+        <h2>Countdown Deadline</h2>
+        <div class="form-group">
+          <label>Deadline Date & Time</label>
+          <input type="datetime-local" id="deadline">
+        </div>
+        <div class="deadline-preview" id="previewBox">
+          <div class="countdown" id="previewCountdown">00 : 00 : 00 : 00</div>
+          <div class="labels">DAYS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HOURS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MIN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SEC</div>
+        </div>
+      </div>
+
+      <!-- Text Settings -->
+      <div class="card">
+        <h2>Page Content</h2>
+        <div class="form-group">
+          <label>Drop Title</label>
+          <input type="text" id="dropTitle" placeholder="DROP THIS SUNDAY 18 JUNE | 18:00">
+        </div>
+        <div class="form-group">
+          <label>Early Access Text</label>
+          <input type="text" id="earlyAccessText" placeholder="EARLY ACCESS | 17:40">
+        </div>
+        <div class="form-group">
+          <label>Bottom Section Title</label>
+          <input type="text" id="bottomTitle" placeholder="Chance auf Early Access">
+        </div>
+        <div class="form-group">
+          <label>Bottom Section Description</label>
+          <textarea id="bottomDescription" placeholder="Description text..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Collection URL</label>
+          <input type="text" id="collectionUrl" placeholder="https://...">
+        </div>
+      </div>
+
+      <button class="btn" onclick="saveSettings()" style="margin-bottom: 40px;">SAVE ALL SETTINGS</button>
+
+      <!-- Change Password -->
+      <div class="card">
+        <h2>Change Password</h2>
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" id="currentPassword" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" id="newPassword" autocomplete="new-password">
+        </div>
+        <button class="btn btn-outline" onclick="changePassword()">CHANGE PASSWORD</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+    let token = localStorage.getItem('admin_token');
+    let previewInterval;
+
+    // Check auth on load
+    if (token) {
+      showDashboard();
+    }
+
+    function showAlert(containerId, message, type) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      setTimeout(() => { el.innerHTML = ''; }, 4000);
+    }
+
+    async function login() {
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert('loginAlert', data.error, 'error');
+          return;
+        }
+
+        token = data.token;
+        localStorage.setItem('admin_token', token);
+        showDashboard();
+      } catch {
+        showAlert('loginAlert', 'Connection error', 'error');
+      }
+    }
+
+    // Allow Enter key to submit login
+    document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') login();
+    });
+
+    function logout() {
+      token = null;
+      localStorage.removeItem('admin_token');
+      document.getElementById('loginPage').classList.remove('hidden');
+      document.getElementById('dashboard').classList.remove('active');
+      if (previewInterval) clearInterval(previewInterval);
+    }
+
+    async function showDashboard() {
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('dashboard').classList.add('active');
+      await loadSettings();
+    }
+
+    async function loadSettings() {
+      try {
+        const res = await fetch(`${API_BASE}/settings`);
+        const data = await res.json();
+
+        if (data.deadline) {
+          const dt = new Date(data.deadline);
+          const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+          document.getElementById('deadline').value = local.toISOString().slice(0, 16);
+          startPreview(dt);
+        }
+        if (data.drop_title) document.getElementById('dropTitle').value = data.drop_title;
+        if (data.early_access_text) document.getElementById('earlyAccessText').value = data.early_access_text;
+        if (data.bottom_title) document.getElementById('bottomTitle').value = data.bottom_title;
+        if (data.bottom_description) document.getElementById('bottomDescription').value = data.bottom_description;
+        if (data.collection_url) document.getElementById('collectionUrl').value = data.collection_url;
+      } catch {
+        showAlert('dashboardAlert', 'Failed to load settings', 'error');
+      }
+    }
+
+    function startPreview(deadline) {
+      if (previewInterval) clearInterval(previewInterval);
+      function update() {
+        const now = new Date();
+        const diff = Math.max(0, deadline - now);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diff / (1000 * 60)) % 60);
+        const secs = Math.floor((diff / 1000) % 60);
+        document.getElementById('previewCountdown').textContent =
+          `${String(days).padStart(2, '0')} : ${String(hours).padStart(2, '0')} : ${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
+      }
+      update();
+      previewInterval = setInterval(update, 1000);
+    }
+
+    // Update preview when deadline input changes
+    document.getElementById('deadline').addEventListener('change', (e) => {
+      startPreview(new Date(e.target.value));
+    });
+
+    async function saveSettings() {
+      const deadlineInput = document.getElementById('deadline').value;
+      const settings = {
+        deadline: new Date(deadlineInput).toISOString(),
+        drop_title: document.getElementById('dropTitle').value,
+        early_access_text: document.getElementById('earlyAccessText').value,
+        bottom_title: document.getElementById('bottomTitle').value,
+        bottom_description: document.getElementById('bottomDescription').value,
+        collection_url: document.getElementById('collectionUrl').value,
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/settings`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(settings)
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) { logout(); return; }
+          throw new Error();
+        }
+
+        showAlert('dashboardAlert', 'Settings saved successfully!', 'success');
+      } catch {
+        showAlert('dashboardAlert', 'Failed to save settings', 'error');
+      }
+    }
+
+    async function changePassword() {
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+
+      if (!currentPassword || !newPassword) {
+        showAlert('dashboardAlert', 'Please fill in both password fields', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/change-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert('dashboardAlert', data.error, 'error');
+          return;
+        }
+
+        showAlert('dashboardAlert', 'Password changed successfully!', 'success');
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+      } catch {
+        showAlert('dashboardAlert', 'Failed to change password', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

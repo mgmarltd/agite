@@ -1,0 +1,52 @@
+module.exports = {
+  apps: [
+    {
+      name: 'agite-backend',
+      cwd: './backend',
+      script: 'server.js',
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 5000,
+      },
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 1000,
+    },
+    {
+      name: 'agite-frontend',
+      cwd: './frontend',
+      script: 'npx',
+      args: 'react-scripts start',
+      exec_mode: 'fork',
+      interpreter: 'none',
+      env: {
+        PORT: 3000,
+        BROWSER: 'none',
+        CI: 'true',
+      },
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 2000,
+    },
+    {
+      name: 'agite-admin',
+      cwd: './admin-frontend',
+      script: 'npx',
+      args: 'react-scripts start',
+      exec_mode: 'fork',
+      interpreter: 'none',
+      env: {
+        PORT: 3001,
+        BROWSER: 'none',
+        CI: 'true',
+      },
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 2000,
+    },
+  ],
+};
