@@ -41,15 +41,35 @@ echo "Remote: $REMOTE_DIR"
 echo ""
 
 # Step 1: Test SSH connection
-echo "[1/6] Testing SSH connection..."
+echo "[1/7] Testing SSH connection..."
 if ! remote "echo 'Connected'" 2>/dev/null; then
   echo "Error: Cannot connect to $USER@$IP"
   exit 1
 fi
 echo "  OK"
 
-# Step 2: Install Node.js and PM2 if needed
-echo "[2/6] Checking server dependencies..."
+# Step 2: Check existing PM2 processes
+echo "[2/7] Checking existing PM2 processes..."
+EXISTING_PM2=$(remote "pm2 jlist 2>/dev/null || echo '[]'")
+echo "$EXISTING_PM2" | python3 -c "
+import sys, json
+try:
+    apps = json.load(sys.stdin)
+    if not apps:
+        print('  No existing PM2 processes')
+    else:
+        print(f'  Found {len(apps)} existing PM2 process(es):')
+        for app in apps:
+            name = app.get('name', '?')
+            port = app.get('pm2_env', {}).get('PORT', app.get('pm2_env', {}).get('env', {}).get('PORT', '?'))
+            status = app.get('pm2_env', {}).get('status', '?')
+            print(f'    - {name} (port {port}) [{status}]')
+except:
+    print('  Could not parse PM2 list')
+"
+
+# Step 3: Install Node.js and PM2 if needed
+echo "[3/7] Checking server dependencies..."
 remote "
   # Install Node.js if not present
   if ! command -v node &> /dev/null; then
@@ -70,23 +90,23 @@ remote "
   mkdir -p $REMOTE_DIR
 "
 
-# Step 3: Find 3 consecutive available ports
-echo "[3/6] Finding 3 consecutive available ports..."
+# Step 4: Find 3 consecutive available ports (skip ports used by ANY process including other PM2 apps)
+echo "[4/7] Finding 3 consecutive available ports..."
 PORTS=$(remote "
-  for START_PORT in \$(seq 4000 100 9000); do
+  # Collect all ports in use (listening TCP)
+  USED_PORTS=\$(ss -tlnp 2>/dev/null | awk '{print \$4}' | grep -oE '[0-9]+$' | sort -un)
+
+  is_free() {
+    echo \"\$USED_PORTS\" | grep -qx \"\$1\" && return 1
+    return 0
+  }
+
+  for START_PORT in \$(seq 4000 1 9000); do
     PORT1=\$START_PORT
     PORT2=\$((START_PORT + 1))
     PORT3=\$((START_PORT + 2))
 
-    IN_USE=0
-    for P in \$PORT1 \$PORT2 \$PORT3; do
-      if ss -tlnp 2>/dev/null | grep -q \":\$P \" || lsof -i:\$P &>/dev/null; then
-        IN_USE=1
-        break
-      fi
-    done
-
-    if [ \$IN_USE -eq 0 ]; then
+    if is_free \$PORT1 && is_free \$PORT2 && is_free \$PORT3; then
       echo \"\$PORT1 \$PORT2 \$PORT3\"
       exit 0
     fi
@@ -107,13 +127,13 @@ echo "  Backend:  port $BACKEND_PORT"
 echo "  Frontend: port $FRONTEND_PORT"
 echo "  Admin:    port $ADMIN_PORT"
 
-# Step 4: Upload project files
-echo "[4/6] Uploading project files..."
+# Step 5: Upload project files
+echo "[5/7] Uploading project files..."
 remote_upload "./" "$REMOTE_DIR/"
 echo "  Done"
 
-# Step 5: Generate configs with discovered ports
-echo "[5/6] Configuring services on server..."
+# Step 6: Generate configs with discovered ports
+echo "[6/7] Configuring services on server..."
 remote "
   cd $REMOTE_DIR
 
@@ -151,9 +171,11 @@ module.exports = {
       exec_mode: 'fork',
       interpreter: 'none',
       env: {
+        HOST: '0.0.0.0',
         PORT: $FRONTEND_PORT,
         BROWSER: 'none',
         CI: 'true',
+        DANGEROUSLY_DISABLE_HOST_CHECK: 'true',
         REACT_APP_API_URL: 'http://$IP:$BACKEND_PORT/api',
       },
       watch: false,
@@ -169,9 +191,11 @@ module.exports = {
       exec_mode: 'fork',
       interpreter: 'none',
       env: {
+        HOST: '0.0.0.0',
         PORT: $ADMIN_PORT,
         BROWSER: 'none',
         CI: 'true',
+        DANGEROUSLY_DISABLE_HOST_CHECK: 'true',
         REACT_APP_API_URL: 'http://$IP:$BACKEND_PORT/api',
       },
       watch: false,
@@ -198,24 +222,27 @@ JSEOF
   cd admin-frontend && npm install && cd ..
 "
 
-# Step 6: Start services
-echo "[6/6] Starting services..."
+# Step 7: Start ONLY agite services (do NOT touch other PM2 processes)
+echo "[7/7] Starting agite services (other PM2 apps untouched)..."
 remote "
   cd $REMOTE_DIR
 
-  # Stop existing processes
-  pm2 delete agite-backend agite-frontend agite-admin 2>/dev/null
+  # Only stop/delete agite processes — leave everything else running
+  pm2 delete agite-backend 2>/dev/null
+  pm2 delete agite-frontend 2>/dev/null
+  pm2 delete agite-admin 2>/dev/null
 
-  # Start all services
+  # Start agite services
   pm2 start ecosystem.config.js
 
-  # Save PM2 process list for auto-restart on reboot
+  # Save ALL PM2 processes (including other apps) for auto-restart on reboot
   pm2 save
 
-  # Setup PM2 startup script
+  # Setup PM2 startup script (idempotent)
   pm2 startup 2>/dev/null
 
-  # Show status
+  echo ''
+  echo 'All PM2 processes:'
   pm2 status
 "
 
@@ -228,6 +255,8 @@ echo "  Frontend:  http://$IP:$FRONTEND_PORT"
 echo "  Admin:     http://$IP:$ADMIN_PORT"
 echo "  Backend:   http://$IP:$BACKEND_PORT"
 echo ""
+echo "  Other PM2 processes were NOT touched."
+echo ""
 echo "  SSH in:    sshpass -p '$PASSWORD' ssh $USER@$IP"
-echo "  Logs:      pm2 logs"
+echo "  Logs:      pm2 logs agite-backend"
 echo "========================================="
