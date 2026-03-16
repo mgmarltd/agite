@@ -4,7 +4,7 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-const PRIVATE_KEYS = ['klaviyo_api_key', 'klaviyo_list_id'];
+const PRIVATE_KEYS = ['klaviyo_api_key', 'klaviyo_list_id', 'smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_email', 'smtp_from_name', 'site_url'];
 
 // Public route - get all settings for the frontend (excludes private keys)
 router.get('/', (req, res) => {
@@ -84,6 +84,37 @@ router.post('/klaviyo-test', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: `Klaviyo returned status ${listRes.status}` });
   } catch (err) {
     return res.status(500).json({ error: 'Connection failed: ' + err.message });
+  }
+});
+
+// Protected route - test SMTP connection
+router.post('/smtp-test', authMiddleware, async (req, res) => {
+  const { getSmtpSettings } = require('../services/email');
+  const nodemailer = require('nodemailer');
+  const settings = getSmtpSettings();
+
+  if (!settings.smtp_host || !settings.smtp_user || !settings.smtp_pass) {
+    return res.status(400).json({ error: 'SMTP settings are incomplete. Save them first.' });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.smtp_host,
+      port: parseInt(settings.smtp_port) || 587,
+      secure: parseInt(settings.smtp_port) === 465,
+      auth: {
+        user: settings.smtp_user,
+        pass: settings.smtp_pass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+
+    await transporter.verify();
+    return res.json({ message: 'SMTP connection successful!' });
+  } catch (err) {
+    return res.status(400).json({ error: 'SMTP connection failed: ' + err.message });
   }
 });
 

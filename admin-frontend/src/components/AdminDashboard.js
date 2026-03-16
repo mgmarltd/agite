@@ -13,6 +13,13 @@ function AdminDashboard({ token, username, onLogout }) {
     collection_url: '',
     klaviyo_api_key: '',
     klaviyo_list_id: '',
+    smtp_host: '',
+    smtp_port: '587',
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_from_email: '',
+    smtp_from_name: '',
+    site_url: '',
   });
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   const [alert, setAlert] = useState(null);
@@ -26,6 +33,10 @@ function AdminDashboard({ token, username, onLogout }) {
   // Klaviyo
   const [klaviyoTesting, setKlaviyoTesting] = useState(false);
   const [savingKlaviyo, setSavingKlaviyo] = useState(false);
+
+  // SMTP
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [savingSmtp, setSavingSmtp] = useState(false);
 
   // Password change
   const [currentPassword, setCurrentPassword] = useState('');
@@ -59,6 +70,13 @@ function AdminDashboard({ token, username, onLogout }) {
           collection_url: data.collection_url || '',
           klaviyo_api_key: data.klaviyo_api_key || '',
           klaviyo_list_id: data.klaviyo_list_id || '',
+          smtp_host: data.smtp_host || '',
+          smtp_port: data.smtp_port || '587',
+          smtp_user: data.smtp_user || '',
+          smtp_pass: data.smtp_pass || '',
+          smtp_from_email: data.smtp_from_email || '',
+          smtp_from_name: data.smtp_from_name || '',
+          site_url: data.site_url || '',
         });
       })
       .catch(() => showAlert('Failed to load settings', 'error'));
@@ -209,6 +227,52 @@ function AdminDashboard({ token, username, onLogout }) {
       showAlert('Failed to test connection', 'error');
     }
     setKlaviyoTesting(false);
+  };
+
+  const saveSmtp = async () => {
+    setSavingSmtp(true);
+    try {
+      const res = await fetch(`${API_BASE}/settings`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({
+          smtp_host: settings.smtp_host,
+          smtp_port: settings.smtp_port,
+          smtp_user: settings.smtp_user,
+          smtp_pass: settings.smtp_pass,
+          smtp_from_email: settings.smtp_from_email,
+          smtp_from_name: settings.smtp_from_name,
+          site_url: settings.site_url,
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) { onLogout(); return; }
+        throw new Error();
+      }
+      showAlert('SMTP settings saved!', 'success');
+    } catch {
+      showAlert('Failed to save SMTP settings', 'error');
+    }
+    setSavingSmtp(false);
+  };
+
+  const testSmtp = async () => {
+    setSmtpTesting(true);
+    try {
+      const res = await fetch(`${API_BASE}/settings/smtp-test`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showAlert(data.message, 'success');
+      } else {
+        showAlert(data.error, 'error');
+      }
+    } catch {
+      showAlert('Failed to test SMTP connection', 'error');
+    }
+    setSmtpTesting(false);
   };
 
   const changePassword = async (e) => {
@@ -546,6 +610,106 @@ function AdminDashboard({ token, username, onLogout }) {
                   disabled={klaviyoTesting || !settings.klaviyo_api_key || !settings.klaviyo_list_id}
                 >
                   {klaviyoTesting ? 'Testing...' : 'Test Connection'}
+                </button>
+              </div>
+            </div>
+
+            <div className="admin-card" style={{ marginTop: '1.5rem' }}>
+              <h3>Email Verification (SMTP)</h3>
+              <p style={{ color: '#999', fontSize: '0.9rem', marginBottom: '1.2rem' }}>
+                Configure SMTP to send verification emails before adding subscribers to Klaviyo.
+              </p>
+              <div className="admin-field">
+                <label>Site URL</label>
+                <input
+                  type="url"
+                  value={settings.site_url}
+                  onChange={(e) => handleChange('site_url', e.target.value)}
+                  placeholder="https://agitebrand.com"
+                  autoComplete="off"
+                />
+                <small style={{ color: '#666', fontSize: '0.8rem' }}>Used to build the verification link in emails</small>
+              </div>
+              <div className="admin-field-row">
+                <div className="admin-field">
+                  <label>SMTP Host</label>
+                  <input
+                    type="text"
+                    value={settings.smtp_host}
+                    onChange={(e) => handleChange('smtp_host', e.target.value)}
+                    placeholder="smtp.gmail.com"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="admin-field">
+                  <label>SMTP Port</label>
+                  <input
+                    type="text"
+                    value={settings.smtp_port}
+                    onChange={(e) => handleChange('smtp_port', e.target.value)}
+                    placeholder="587"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div className="admin-field-row">
+                <div className="admin-field">
+                  <label>SMTP Username</label>
+                  <input
+                    type="text"
+                    value={settings.smtp_user}
+                    onChange={(e) => handleChange('smtp_user', e.target.value)}
+                    placeholder="user@example.com"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="admin-field">
+                  <label>SMTP Password</label>
+                  <input
+                    type="password"
+                    value={settings.smtp_pass}
+                    onChange={(e) => handleChange('smtp_pass', e.target.value)}
+                    placeholder="App password or SMTP password"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div className="admin-field-row">
+                <div className="admin-field">
+                  <label>From Email</label>
+                  <input
+                    type="email"
+                    value={settings.smtp_from_email}
+                    onChange={(e) => handleChange('smtp_from_email', e.target.value)}
+                    placeholder="noreply@agitebrand.com"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="admin-field">
+                  <label>From Name</label>
+                  <input
+                    type="text"
+                    value={settings.smtp_from_name}
+                    onChange={(e) => handleChange('smtp_from_name', e.target.value)}
+                    placeholder="AGIT\u00C9"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  className="admin-btn admin-btn-primary"
+                  onClick={saveSmtp}
+                  disabled={savingSmtp}
+                >
+                  {savingSmtp ? 'Saving...' : 'Save SMTP Settings'}
+                </button>
+                <button
+                  className="admin-btn admin-btn-export"
+                  onClick={testSmtp}
+                  disabled={smtpTesting || !settings.smtp_host || !settings.smtp_user || !settings.smtp_pass}
+                >
+                  {smtpTesting ? 'Testing...' : 'Test Connection'}
                 </button>
               </div>
             </div>

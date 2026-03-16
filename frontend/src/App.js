@@ -50,7 +50,7 @@ function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        setSubscribeStatus({ type: 'success', message: 'You have been subscribed!' });
+        setSubscribeStatus({ type: 'success', message: 'Check your inbox to confirm your email!' });
         setEmail('');
       } else {
         setSubscribeStatus({ type: 'error', message: data.error });
